@@ -879,37 +879,24 @@ impl<FEN: FoundryEvmNetwork> Cheatcodes<FEN> {
                 {
                     // Mocked calls bypass revm's call frame setup, so apply the value transfer here.
                     let checkpoint = ecx.journal_mut().checkpoint();
-                    match ecx.journal_mut().transfer(
+                    match ecx.journal_mut().transfer_loaded(
                         call.transfer_from(),
                         call.transfer_to(),
                         value,
                     ) {
-                        Ok(None) => {
+                        None => {
                             if ret_type.is_ok() {
                                 ecx.journal_mut().checkpoint_commit();
                             } else {
                                 ecx.journal_mut().checkpoint_revert(checkpoint);
                             }
                         }
-                        Ok(Some(err)) => {
+                        Some(err) => {
                             ecx.journal_mut().checkpoint_revert(checkpoint);
                             return Some(CallOutcome {
                                 result: InterpreterResult {
                                     result: err.into(),
                                     output: Bytes::new(),
-                                    gas,
-                                },
-                                memory_offset: call.return_memory_offset.clone(),
-                                was_precompile_called: false,
-                                precompile_call_logs: vec![],
-                            });
-                        }
-                        Err(err) => {
-                            ecx.journal_mut().checkpoint_revert(checkpoint);
-                            return Some(CallOutcome {
-                                result: InterpreterResult {
-                                    result: InstructionResult::Revert,
-                                    output: Error::encode(err),
                                     gas,
                                 },
                                 memory_offset: call.return_memory_offset.clone(),
